@@ -1,0 +1,57 @@
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Region {
+  code        String   @id
+  displayName String
+  enabled     Boolean  @default(true)
+}
+
+model CarbonIntensityHour {
+  id              Int      @id @default(autoincrement())
+  regionCode      String
+  timestampUtc    DateTime
+  carbonIntensity Int
+  rawRowJson      String
+}
+
+model SimClock {
+  id        Int      @id @default(autoincrement())
+  simNowUtc DateTime
+  updatedAt DateTime @updatedAt
+}
+
+model LatencyMetric {
+  id           Int      @id @default(autoincrement())
+  regionCode   String
+  timestampUtc DateTime
+  latencyMs    Float
+  source       String // e.g., "cloudflare_radar"
+  rawJson      String
+}
+
+model Instance {
+  id          Int    @id @default(autoincrement())
+  name        String
+  regionCode  String
+  instanceType String // e.g. "t3.medium"
+  costPerHour Float
+  team        String
+  status      String // "RUNNING" | "STOPPED"
+}
+
+model MigrationAction {
+  id            Int      @id @default(autoincrement())
+  fromRegion    String
+  toRegion      String
+  movedCount    Int
+  executedAtUtc DateTime @default(now())
+}
