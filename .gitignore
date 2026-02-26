@@ -31,3 +31,6 @@ build/
 
 # Mac
 .DS_Store
+
+SPECTRA-FRONTEND_old/
+
