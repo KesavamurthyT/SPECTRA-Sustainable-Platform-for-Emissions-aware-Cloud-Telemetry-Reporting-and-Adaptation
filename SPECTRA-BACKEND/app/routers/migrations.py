@@ -5,6 +5,21 @@ import datetime
 
 router = APIRouter(prefix="/api/migrations", tags=["migrations"])
 
+
+@router.get("/history")
+async def get_migration_history(limit: int = 20, offset: int = 0):
+    """Return a paginated list of past migration actions."""
+    if not db.is_connected():
+        await db.connect()
+
+    total = await db.migrationaction.count()
+    records = await db.migrationaction.find_many(
+        order={"executedAtUtc": "desc"},
+        take=limit,
+        skip=offset,
+    )
+    return {"total": total, "limit": limit, "offset": offset, "records": records}
+
 class MigrationRequest(BaseModel):
     fromRegion: str
     toRegion: str

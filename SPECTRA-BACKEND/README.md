@@ -1,24 +1,8 @@
-# SPECTRA Backend
+SPECTRA Backend
 
 **Sustainable Platform for Emissions-aware Cloud Telemetry, Reporting and Adaptation**
 
-FastAPI backend powering the SPECTRA carbon monitoring dashboard. Connects to AWS (EC2, CloudWatch, Cost Explorer), ElectricityMaps, and Cloudflare Radar to provide real-time carbon intelligence for cloud workloads.
-
----
-
-## Table of Contents
-
-1. [Project Structure](#project-structure)
-2. [Prerequisites](#prerequisites)
-3. [First-Time Setup](#first-time-setup)
-4. [Running the Server](#running-the-server)
-5. [Seeding the Database](#seeding-the-database)
-6. [Environment Variables](#environment-variables)
-7. [Demo Mode vs. Live Mode](#demo-mode-vs-live-mode)
-8. [API Overview](#api-overview)
-9. [Running Tests](#running-tests)
-10. [Adding a New Region](#adding-a-new-region)
-11. [Project Architecture](#project-architecture)
+A FastAPI backend that tracks cloud infrastructure carbon emissions, detects anomalies, optimises workload scheduling, and enforces team carbon budgets — backed by a Prisma ORM + SQLite database.
 
 ---
 
@@ -27,22 +11,29 @@ FastAPI backend powering the SPECTRA carbon monitoring dashboard. Connects to AW
 ```
 SPECTRA-BACKEND/
 ├── app/
-│   ├── main.py                  # FastAPI app factory, lifespan, CORS, router wiring
+│   ├── main.py                  # FastAPI app, lifespan, router registration
 │   ├── db.py                    # Prisma client singleton
 │   │
-│   ├── config/                  # ★ All configuration lives here
-│   │   ├── __init__.py          # Re-exports settings + all constants
-│   │   ├── settings.py          # Env-var config (reads from .env via pydantic-settings)
-│   │   └── constants.py         # Static domain constants (regions, power models, thresholds)
+│   ├── config/
+│   │   ├── settings.py          # Pydantic-settings (env-driven config)
+│   │   └── constants.py         # Domain constants (thresholds, enums, defaults)
 │   │
-│   ├── routers/                 # One file per API domain
-│   │   ├── admin.py             # /api/admin  — import, tick, latency fetch
-│   │   ├── regions.py           # /api/regions — carbon signals, latency
+│   ├── routers/
+│   │   ├── admin.py             # /api/admin — import, tick, latency fetch
+│   │   ├── migrations.py        # /api/migrations — execute & history
 │   │   ├── optimizer.py         # /api/optimizer — region ranking
-│   │   └── migrations.py        # /api/migrations — execute & history
+│   │   ├── regions.py           # /api/regions — region list & carbon data
+│   │   ├── instances.py         # /api/instances — instance list & optimize
+│   │   ├── anomalies.py         # /api/anomalies — anomaly list, stats & actions
+│   │   ├── budgets.py           # /api/budgets — team budgets & CSV export
+│   │   ├── scheduler.py         # /api/scheduler — jobs & forecast
+│   │   ├── dashboard.py         # /api/dashboard — aggregated metrics
+│   │   ├── reports.py           # /api/reports — summary, history & export
+│   │   └── settings.py          # /api/settings — platform config
 │   │
-│   └── services/                # Business logic (no HTTP concerns)
-│       ├── seeds.py             # DB seed functions for all models
+│   └── services/
+│       ├── seed.py              # First-boot DB seeder (auto-runs on empty DB)
+│       ├── seeds.py             # Legacy seed helpers (used by admin router)
 │       ├── sim_clock.py         # Simulation clock get/tick
 │       ├── cloudflare_radar.py  # Latency fetching via Cloudflare Radar API
 │       └── csv_importer.py      # ElectricityMaps CSV → CarbonIntensityHour
@@ -51,16 +42,17 @@ SPECTRA-BACKEND/
 │   └── electricitymaps/         # Place CSV snapshot files here for import
 │       └── *.csv
 │
-├── migrations/                  # Prisma migration history (auto-generated, do not edit)
+├── migrations/                  # Prisma migration history (do not edit manually)
 │
-├── tests/                       # Pytest test suite
+├── tests/
 │   ├── conftest.py              # Shared fixtures
 │   ├── test_health.py           # Health + optimizer endpoint tests
 │   └── test_migrations.py       # Migration endpoint tests
 │
 ├── schema.prisma                # Database schema (source of truth)
+├── push_mock_data.py            # CLI tool to seed / reset the database
 ├── requirements.txt             # Python dependencies
-├── .env.example                 # ★ Copy this to .env and fill in your values
+├── .env.example                 # Copy this to .env and fill in your values
 ├── .env                         # Your local config (git-ignored)
 ├── BACKEND_PLAN.md              # Full implementation roadmap
 └── FEASIBILITY.md               # AWS integration feasibility analysis
@@ -75,9 +67,9 @@ SPECTRA-BACKEND/
 | Python | 3.11+ | Runtime |
 | pip | latest | Package install |
 | Node.js | 18+ | Prisma CLI (runs on Node) |
-| npm or npx | latest | Run `prisma` commands |
+| npm / npx | latest | Run `prisma` commands |
 
-Install Prisma CLI globally (one-time):
+Install the Prisma CLI once globally:
 
 ```bash
 npm install -g prisma
@@ -88,7 +80,7 @@ npm install -g prisma
 ## First-Time Setup
 
 ```bash
-# 1. Clone the repo and navigate to the backend
+# 1. Navigate to the backend folder
 cd SPECTRA-BACKEND
 
 # 2. Create and activate a virtual environment
@@ -102,31 +94,29 @@ source .venv/bin/activate
 # 3. Install Python dependencies
 pip install -r requirements.txt
 
-# 4. Copy the example env file and edit it
+# 4. Copy the example env file and fill in your values
 cp .env.example .env
-# Open .env and set at minimum: DATABASE_URL (default is fine for SQLite)
 
 # 5. Apply the database schema
-prisma migrate dev --schema schema.prisma
+prisma migrate deploy --schema schema.prisma
 
 # 6. Generate the Prisma Python client
 prisma generate --schema schema.prisma
 
 # 7. Start the server
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# 8. In a separate terminal — seed the database with demo data
-curl -X POST http://localhost:8000/api/admin/import
 ```
 
-The API is now running at **http://localhost:8000** and the interactive docs are at **http://localhost:8000/docs**.
+The server detects an empty database on first boot and **automatically seeds it** with demo data — no manual step required.
+
+The API is live at **http://localhost:8000** and interactive docs are at **http://localhost:8000/docs**.
 
 ---
 
 ## Running the Server
 
 ```bash
-# Development (with auto-reload on file changes)
+# Development (auto-reload on file changes)
 uvicorn app.main:app --reload --port 8000
 
 # Production
@@ -135,150 +125,95 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 ---
 
-## Seeding the Database
+## Database Seeding
 
-All seed functions are triggered by a single admin endpoint. This is safe to call multiple times — each function checks for existing data before inserting.
+The database is seeded automatically the first time the server starts against an empty database.
 
-```bash
-curl -X POST http://localhost:8000/api/admin/import
-```
-
-What this does:
-1. Seeds 5 cloud regions (`Region` table)
-2. Imports ElectricityMaps CSV files from `CSV_DIR` → `CarbonIntensityHour`
-3. Seeds 50 demo EC2 instances with realistic utilisation data
-4. Seeds demo anomalies
-5. Seeds team carbon budgets for Q1-2026
-6. Seeds scheduled job recommendations
-7. Seeds default app settings (only fills missing keys, never overwrites)
-
-To reset and re-seed from scratch:
+To manually seed or reset:
 
 ```bash
-# Delete the database and re-migrate
-del dev.db                          # Windows
-# rm dev.db                         # macOS/Linux
-prisma migrate dev --schema schema.prisma
-curl -X POST http://localhost:8000/api/admin/import
+# Seed if the database is empty (safe to run on an already-seeded DB)
+python push_mock_data.py
+
+# Wipe all data and re-seed from scratch
+python push_mock_data.py --reset
 ```
+
+To wipe the database entirely and start fresh:
+
+```bash
+# Windows
+Remove-Item dev.db
+prisma migrate deploy --schema schema.prisma
+uvicorn app.main:app --reload --port 8000
+# Server auto-seeds on first boot
+```
+
+---
+
+## API Endpoints
+
+| Router | Prefix | Description |
+|--------|--------|-------------|
+| admin | `/api/admin` | Trigger CSV import, sim-clock tick, latency fetch |
+| migrations | `/api/migrations` | Execute migrations, view history |
+| optimizer | `/api/optimizer` | Rank regions by carbon intensity |
+| regions | `/api/regions` | List regions, carbon intensity data |
+| instances | `/api/instances` | List instances, optimize, patch |
+| anomalies | `/api/anomalies` | List anomalies, stats, resolve/dismiss |
+| budgets | `/api/budgets` | Team carbon budgets, CSV export |
+| scheduler | `/api/scheduler` | Scheduled jobs, forecast |
+| dashboard | `/api/dashboard` | Aggregated live metrics |
+| reports | `/api/reports` | Summary, history, CSV export |
+| settings | `/api/settings` | Platform configuration |
+
+Full interactive documentation (with request/response schemas) is available at **http://localhost:8000/docs**.
 
 ---
 
 ## Environment Variables
 
-Copy `.env.example` to `.env`. Key variables:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `file:./dev.db` | Prisma database connection string |
+| `CSV_DIR` | `data/electricitymaps` | Directory scanned for CSV imports |
+| `CLOUDFLARE_API_TOKEN` | — | Token for Cloudflare Radar latency API |
+| `SIM_CLOCK_ENABLED` | `true` | Enable/disable the simulation clock |
+| `LOG_LEVEL` | `info` | Uvicorn log level |
 
-| Variable | Default | Required | Description |
-|----------|---------|----------|-------------|
-| `DATABASE_URL` | `file:./dev.db` | Yes | SQLite or PostgreSQL connection string |
-| `SIM_START` | `2024-01-01T00:00:00Z` | No | UTC datetime the simulation clock starts at |
-| `SIM_TICK_INTERVAL_HOURS` | `1` | No | How often (hours) the sim clock auto-advances |
-| `LATENCY_FETCH_INTERVAL_HOURS` | `6` | No | How often (hours) Cloudflare latency refreshes |
-| `CSV_DIR` | `./data/electricitymaps` | No | Directory containing ElectricityMaps CSVs |
-| `CLOUDFLARE_API_TOKEN` | _(empty)_ | No | Enables live latency data; uses baseline fallbacks if absent |
-| `ELECTRICITY_MAPS_API_KEY` | _(empty)_ | No | Enables live carbon intensity; uses CSV snapshots if absent |
-| `AWS_ROLE_ARN` | _(empty)_ | No | IAM Role ARN for AWS data (can be set via Settings UI) |
-| `AWS_ACCESS_KEY_ID` | _(empty)_ | No | AWS access key (can be set via Settings UI) |
-| `AWS_SECRET_ACCESS_KEY` | _(empty)_ | No | AWS secret key (can be set via Settings UI) |
-| `CORS_ORIGINS` | `http://localhost:5173,...` | No | Comma-separated allowed frontend origins |
-| `APP_ENV` | `development` | No | `development` \| `staging` \| `production` |
-
----
-
-## Demo Mode vs. Live Mode
-
-SPECTRA is designed to run fully without any external API keys — useful for development, CI, and demos.
-
-| Feature | Demo mode (no keys) | Live mode (with keys) |
-|---------|--------------------|-----------------------|
-| Carbon intensity | From imported CSV files | ElectricityMaps live API |
-| Latency data | Preconfigured baseline values | Cloudflare Radar API |
-| EC2 instances | Seeded fake instances (50) | Fetched from AWS EC2 |
-| CPU/memory utilisation | Randomly generated | AWS CloudWatch metrics |
-| Cost data | Estimated from instance type | AWS Cost Explorer |
-
----
-
-## API Overview
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Liveness probe |
-| GET | `/api/optimizer/regions` | Ranked regions with carbon, latency, cost, recommendation |
-| GET | `/api/regions/signals/latest` | Latest carbon intensity per region + sim clock |
-| GET | `/api/regions/signals/history` | Historical carbon intensity for a region |
-| GET | `/api/regions/latency/latest` | Latest latency per region |
-| GET | `/api/regions/latency/history` | Historical latency for a region |
-| POST | `/api/migrations/execute` | Move workloads from one region to another |
-| POST | `/api/admin/import` | Seed/import all data |
-| POST | `/api/admin/tick` | Advance simulation clock |
-| POST | `/api/admin/latency/fetch-now` | Trigger immediate latency refresh |
-
-Full interactive docs: **http://localhost:8000/docs**
+See `.env.example` for the full list with descriptions.
 
 ---
 
 ## Running Tests
 
-Requires the server to be running locally on port 8000 with seeded data.
+```bash
+pytest tests/ -v
+```
+
+---
+
+## Database Schema
+
+The schema lives in `schema.prisma`. The ten models are:
+
+| Model | Description |
+|-------|-------------|
+| `Region` | Cloud regions (code, name, provider, coordinates) |
+| `CarbonIntensityHour` | Hourly carbon intensity readings per region |
+| `SimClock` | Simulation clock state |
+| `LatencyMetric` | Inter-region latency measurements |
+| `Instance` | Cloud compute instances with workload metadata |
+| `MigrationAction` | Record of cross-region migration events |
+| `Anomaly` | Detected carbon/cost/performance anomalies |
+| `TeamBudget` | Per-team quarterly carbon budget allocations |
+| `ScheduledJob` | Batch/flexible jobs with scheduling recommendations |
+| `Setting` | Key-value platform configuration store |
+
+To modify the schema:
 
 ```bash
-# Install pytest (already in requirements if you ran pip install -r requirements.txt)
-pip install pytest
-
-# Run all tests
-python -m pytest tests/ -v
-
-# Run a specific test file
-python -m pytest tests/test_health.py -v
+# Edit schema.prisma, then:
+prisma migrate dev --schema schema.prisma --name describe_your_change
+prisma generate --schema schema.prisma
 ```
-
----
-
-## Adding a New Region
-
-All region configuration is centralised in **`app/config/constants.py`**. To add a new region:
-
-1. Add an entry to `REGIONS`:
-   ```python
-   {"code": "AU", "displayName": "Sydney (Australia)"},
-   ```
-
-2. Add a fallback latency to `REGION_BASE_LATENCY_MS`:
-   ```python
-   "AU": 160.0,
-   ```
-
-3. Add an annual average carbon intensity to `REGION_CARBON_INTENSITY_G_PER_KWH`:
-   ```python
-   "AU": 550,   # Australia — coal-heavy grid
-   ```
-
-4. Add keywords for CSV filename detection to `REGION_KEYWORDS`:
-   ```python
-   "AU": ["AU-", "_AU_", "Australia", "Sydney"],
-   ```
-
-5. Drop the corresponding ElectricityMaps CSV into `data/electricitymaps/` and re-run:
-   ```bash
-   curl -X POST http://localhost:8000/api/admin/import
-   ```
-
-No other code changes are needed — seeds, importer, and optimizer all read from constants dynamically.
-
----
-
-## Project Architecture
-
-```
-Request → FastAPI Router → Service function → Prisma DB
-                              ↑
-                        app/config/
-                        settings.py  (env vars)
-                        constants.py (domain values)
-```
-
-- **Routers** handle HTTP concerns only (validation, response shape).
-- **Services** contain all business logic and are importable without HTTP context.
-- **Config** is the single source of truth — no `os.getenv()` calls outside `app/config/settings.py`.
-- **Constants** change only when the physical model changes (new region, new instance type), not in response to user config.

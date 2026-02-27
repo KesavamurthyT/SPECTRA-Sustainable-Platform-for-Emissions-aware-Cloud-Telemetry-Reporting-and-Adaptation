@@ -5,9 +5,15 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.db import db
 from app.config.settings import settings
-from app.routers import admin, regions, optimizer, migrations
+from app.routers import (
+    admin, regions, optimizer, migrations,
+    instances, anomalies, budgets, dashboard, reports,
+)
+from app.routers import scheduler as scheduler_router
+from app.routers import settings as settings_router
 from app.services.sim_clock import tick_time, get_sim_time
 from app.services.cloudflare_radar import update_latency_metrics
+from app.services.seed import seed_all
 
 # ---------------------------------------------------------------------------- #
 # Background Scheduler                                                           #
@@ -44,6 +50,11 @@ async def lifespan(app: FastAPI):
 
     if not db.is_connected():
         await db.connect()
+
+    # First-boot check: seed the database if it is empty
+    if await db.region.count() == 0:
+        print("[startup] Empty database detected — running first-boot seed...")
+        await seed_all()
 
     # Initialise the simulation clock if this is the first boot
     await get_sim_time()
@@ -109,6 +120,13 @@ app.include_router(admin.router)
 app.include_router(regions.router)
 app.include_router(optimizer.router)
 app.include_router(migrations.router)
+app.include_router(instances.router)
+app.include_router(anomalies.router)
+app.include_router(budgets.router)
+app.include_router(scheduler_router.router)
+app.include_router(dashboard.router)
+app.include_router(reports.router)
+app.include_router(settings_router.router)
 
 
 @app.get("/health", tags=["health"])

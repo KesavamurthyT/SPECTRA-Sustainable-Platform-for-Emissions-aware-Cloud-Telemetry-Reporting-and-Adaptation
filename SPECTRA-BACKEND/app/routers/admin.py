@@ -1,6 +1,6 @@
-import os
 from fastapi import APIRouter
 from app.db import db
+from app.config.settings import settings
 from app.services.csv_importer import import_csvs
 from app.services.sim_clock import tick_time
 from app.services.cloudflare_radar import update_latency_metrics
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 @router.post("/import")
 async def trigger_import():
     if not db.is_connected(): await db.connect()
-    csv_dir = os.getenv("CSV_DIR", "./data/electricitymaps")
+    csv_dir = settings.csv_dir
     await seed_regions()
     await import_csvs(csv_dir)
     await seed_instances()
