@@ -1,36 +1,146 @@
+# =============================================================================
+# SPECTRA — root .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
 # Python
+# -----------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyd
+*.pywasm
 
-# Environments
+# Type-checker / linter caches
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+.pytype/
+
+# Test & coverage artefacts
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.xml
+
+# Build / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+MANIFEST
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+
+# -----------------------------------------------------------------------------
+# Python virtual environments
+# -----------------------------------------------------------------------------
 .env
 .venv
+.venv*/
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+Lib/             # Windows venv lib dir
+Scripts/         # Windows venv scripts dir
 
-# Database
+# -----------------------------------------------------------------------------
+# SPECTRA Backend — sensitive and generated files
+# -----------------------------------------------------------------------------
+
+# Environment config — never commit real secrets
+SPECTRA-BACKEND/.env
+SPECTRA-BACKEND/.env.local
+SPECTRA-BACKEND/.env.production
+
+# SQLite database files
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
 *.sqlite3
-dev.db
 
-# Distribution / Packaging
-dist/
-build/
-*.egg-info/
+# Prisma generated client (regenerated via `prisma generate`)
+SPECTRA-BACKEND/prisma/
 
-# IDE
+# AWS credential files that might accidentally land here
+.aws/
+aws-credentials.json
+credentials.json
+
+# Uploaded / exported data snapshots (keep the example CSVs, ignore large dumps)
+SPECTRA-BACKEND/data/exports/
+SPECTRA-BACKEND/data/snapshots/
+SPECTRA-BACKEND/data/**/*.bak
+
+# APScheduler job store (SQLite-backed)
+SPECTRA-BACKEND/jobs.sqlite
+
+# uvicorn / gunicorn worker logs
+SPECTRA-BACKEND/*.log
+SPECTRA-BACKEND/logs/
+
+# -----------------------------------------------------------------------------
+# SPECTRA Frontend
+# -----------------------------------------------------------------------------
+SPECTRA-FRONTEND/node_modules/
+SPECTRA-FRONTEND/dist/
+SPECTRA-FRONTEND/dist-ssr/
+SPECTRA-FRONTEND/.env
+SPECTRA-FRONTEND/.env.local
+SPECTRA-FRONTEND/.env.production
+SPECTRA-FRONTEND/coverage/
+SPECTRA-FRONTEND/.vite/
+
+# -----------------------------------------------------------------------------
+# IDE & Editor
+# -----------------------------------------------------------------------------
 .vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
 .idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.code-workspace
 
-# Logs
-*.log
-
-# Mac
+# -----------------------------------------------------------------------------
+# OS artefacts
+# -----------------------------------------------------------------------------
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V8
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
 
+# -----------------------------------------------------------------------------
+# Logs (global)
+# -----------------------------------------------------------------------------
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
 SPECTRA-FRONTEND_old/
+*.bak
+*.tmp
+*.temp
+.cache/
 

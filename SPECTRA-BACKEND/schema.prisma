@@ -39,13 +39,21 @@ model LatencyMetric {
 }
 
 model Instance {
-  id          Int    @id @default(autoincrement())
-  name        String
-  regionCode  String
-  instanceType String // e.g. "t3.medium"
-  costPerHour Float
-  team        String
-  status      String // "RUNNING" | "STOPPED"
+  id                Int     @id @default(autoincrement())
+  name              String
+  regionCode        String
+  instanceType      String  // e.g. "t3.medium"
+  costPerHour       Float
+  team              String
+  status            String  // "RUNNING" | "STOPPED"
+  cpuUtilization    Float   @default(0)
+  memoryUtilization Float   @default(0)
+  co2ePerMonth      Float   @default(0)
+  recommendedType   String? // null means no recommendation
+  confidence        Float?  // 0-100
+  potentialSavings  Float?  // kg CO2e saved per month
+  costSavings       Float?  // USD saved per month
+  risk              String  @default("low") // "low" | "medium" | "high"
 }
 
 model MigrationAction {
@@ -54,4 +62,45 @@ model MigrationAction {
   toRegion      String
   movedCount    Int
   executedAtUtc DateTime @default(now())
+}
+
+model Anomaly {
+  id             Int      @id @default(autoincrement())
+  instanceId     String   // EC2 instance ID string e.g. "i-0123abc"
+  instanceName   String
+  detectedAtUtc  DateTime @default(now())
+  type           String   // "high_cpu" | "memory_spike" | "network_burst" | "disk_io"
+  score          Float    // 0.0 - 1.0 anomaly confidence score
+  expectedValue  Float
+  actualValue    Float
+  action         String   @default("pending") // "pending" | "alerted" | "restarted" | "auto_killed"
+  co2eSaved      Float    @default(0)
+  severity       String   // "low" | "medium" | "high"
+}
+
+model TeamBudget {
+  id          Int    @id @default(autoincrement())
+  team        String
+  allocated   Float  // kg CO2e budget
+  used        Float  @default(0)
+  quarterYear String // e.g. "Q1-2025"
+
+  @@unique([team, quarterYear])
+}
+
+model ScheduledJob {
+  id                    Int     @id @default(autoincrement())
+  name                  String
+  team                  String
+  currentSchedule       String  // cron or "HH:MM UTC"
+  recommendedSchedule   String
+  durationHours         Float
+  carbonSavings         Float   // kg CO2e saved if rescheduled
+  flexibility           String  // "critical" | "flexible" | "batch"
+  accepted              Boolean @default(false)
+}
+
+model Setting {
+  key   String @id
+  value String
 }

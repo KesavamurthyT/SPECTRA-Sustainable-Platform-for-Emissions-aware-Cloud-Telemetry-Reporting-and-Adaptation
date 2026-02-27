@@ -4,7 +4,7 @@ from app.db import db
 from app.services.csv_importer import import_csvs
 from app.services.sim_clock import tick_time
 from app.services.cloudflare_radar import update_latency_metrics
-from app.services.seeds import seed_regions, seed_instances
+from app.services.seeds import seed_regions, seed_instances, seed_anomalies, seed_team_budgets, seed_scheduled_jobs, seed_settings
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -15,6 +15,10 @@ async def trigger_import():
     await seed_regions()
     await import_csvs(csv_dir)
     await seed_instances()
+    await seed_anomalies()
+    await seed_team_budgets()
+    await seed_scheduled_jobs()
+    await seed_settings()
     return {"status": "Import triggered"}
 
 @router.post("/tick")

@@ -1,41 +1,40 @@
-import os
 import datetime
 from app.db import db
-from prisma.models import SimClock
+from app.config.settings import settings
+
+
+def _parse_sim_start() -> datetime.datetime:
+    """Parse the SIM_START env variable into an aware UTC datetime."""
+    sim_start_str = settings.sim_start
+    # fromisoformat in Python <3.11 does not support trailing 'Z'
+    if sim_start_str.endswith("Z"):
+        sim_start_str = sim_start_str[:-1] + "+00:00"
+    return datetime.datetime.fromisoformat(sim_start_str)
+
 
 async def get_sim_time() -> datetime.datetime:
     """
-    Get the current simulation time.
-    If not initialized, initialize it with SIM_START.
+    Return the current simulation time.
+    Initialises the SimClock row from SIM_START env var on first call.
     """
     clock = await db.simclock.find_first()
     if not clock:
-        sim_start_str = os.getenv("SIM_START", "2024-01-01T00:00:00Z")
-        # Handle trailing Z if present for fromisoformat (Python 3.10 support)
-        if sim_start_str.endswith("Z"):
-            sim_start_str = sim_start_str[:-1] + "+00:00"
-        
-        start_time = datetime.datetime.fromisoformat(sim_start_str)
-        clock = await db.simclock.create(
-            data={
-                "simNowUtc": start_time
-            }
-        )
+        start_time = _parse_sim_start()
+        clock = await db.simclock.create(data={"simNowUtc": start_time})
     return clock.simNowUtc
 
 async def tick_time(hours: int = 1) -> datetime.datetime:
     """
-    Advance the simulation time by N hours.
+    Advance the simulation clock by *hours* hours.
+    Initialises the clock first if it has never been set.
     """
     clock = await db.simclock.find_first()
-    # Ensure initialized
     if not clock:
         return await get_sim_time()
-    
+
     new_time = clock.simNowUtc + datetime.timedelta(hours=hours)
-    
     updated_clock = await db.simclock.update(
         where={"id": clock.id},
-        data={"simNowUtc": new_time}
+        data={"simNowUtc": new_time},
     )
     return updated_clock.simNowUtc
