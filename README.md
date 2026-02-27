@@ -117,16 +117,16 @@ Frontend available at **http://localhost:5173**
 
 ## Pages & Features
 
-| Page | Description | Backend status |
-|------|-------------|---------------|
-| **Dashboard** | Live CO₂e metrics, scope breakdown, budget overview | 🔄 Phase 2 |
-| **Regions** | Carbon intensity, latency, cost per region + migration tool | ✅ Live |
-| **Instances** | EC2 rightsizing recommendations with CO₂e and cost savings | 🔄 Phase 2 |
-| **Anomalies** | Real-time detection of runaway processes and carbon waste | 🔄 Phase 2 |
-| **Budgets** | Per-team carbon budget tracking + CSV chargeback export | 🔄 Phase 2 |
-| **Scheduler** | Carbon-aware job scheduling with 24h intensity forecast | 🔄 Phase 2 |
-| **Reports** | Scope 1/2/3 ESG report generation and export | 🔄 Phase 2 |
-| **Settings** | AWS credentials, ElectricityMaps key, automation config | 🔄 Phase 2 |
+| Page | Description |
+|------|-------------|
+| **Dashboard** | Live CO₂e metrics, scope breakdown, budget overview|
+| **Regions** | Carbon intensity, latency, cost per region + migration tool |
+| **Instances** | EC2 rightsizing recommendations with CO₂e and cost savings |
+| **Anomalies** | Real-time detection of runaway processes and carbon waste  |
+| **Budgets** | Per-team carbon budget tracking + CSV chargeback export |
+| **Scheduler** | Carbon-aware job scheduling with 24h intensity forecast |
+| **Reports** | Scope 1/2/3 ESG report generation and export |
+| **Settings** | AWS credentials, ElectricityMaps key, automation config |
 
 ---
 
